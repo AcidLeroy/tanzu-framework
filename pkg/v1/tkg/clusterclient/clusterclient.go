@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -333,6 +334,8 @@ type Client interface {
 	GetCLIPluginImageRepositoryOverride() (map[string]string, error)
 	// VerifyExistenceOfCRD returns true if CRD exists else return false
 	VerifyExistenceOfCRD(resourceName, resourceGroup string) (bool, error)
+	// RemoveMatchingLabelsFromResources removes matching labels for specified resource types
+	RemoveMatchingLabelsFromResources(resource crtclient.ObjectList, namespace string, labelsToBeDeleted []string) error
 }
 
 // PollOptions is options for polling
@@ -2428,6 +2431,47 @@ func (c *client) IsClusterClassBased(clusterName, namespace string) (bool, error
 	}
 
 	return true, nil
+}
+
+func (c *client) RemoveMatchingLabelsFromResources(resource crtclient.ObjectList, namespace string, labelsToBeDeleted []string) error {
+	err := c.ListResources(resource, &crtclient.ListOptions{Namespace: namespace})
+	if err != nil {
+		return err
+	}
+
+	objList, err := runtime.DefaultUnstructuredConverter.ToUnstructured(resource)
+	if err != nil {
+		return err
+	}
+
+	items, exists := objList["items"]
+	if items == nil || !exists {
+		return nil
+	}
+
+	for _, item := range items.([]interface{}) {
+		unstructuredObj := item.(map[string]interface{})
+		obj := &unstructured.Unstructured{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredObj, obj)
+
+		obj.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   resource.GetObjectKind().GroupVersionKind().Group,
+			Kind:    strings.TrimSuffix(resource.GetObjectKind().GroupVersionKind().Kind, "List"),
+			Version: resource.GetObjectKind().GroupVersionKind().Version,
+		})
+
+		labels := obj.GetLabels()
+		for _, key := range labelsToBeDeleted {
+			delete(labels, key)
+		}
+
+		obj.SetLabels(labels)
+		err = c.UpdateResource(obj, obj.GetName(), obj.GetNamespace())
+		if err != nil {
+			return errors.Wrap(err, "error while updating labels")
+		}
+	}
+	return nil
 }
 
 // Options provides way to customize creation of clusterClient

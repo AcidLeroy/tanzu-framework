@@ -883,6 +883,19 @@ type ClusterClient struct {
 	removeCEIPTelemetryJobReturnsOnCall map[int]struct {
 		result1 error
 	}
+	RemoveMatchingLabelsFromResourcesStub        func(client.ObjectList, string, []string) error
+	removeMatchingLabelsFromResourcesMutex       sync.RWMutex
+	removeMatchingLabelsFromResourcesArgsForCall []struct {
+		arg1 client.ObjectList
+		arg2 string
+		arg3 []string
+	}
+	removeMatchingLabelsFromResourcesReturns struct {
+		result1 error
+	}
+	removeMatchingLabelsFromResourcesReturnsOnCall map[int]struct {
+		result1 error
+	}
 	ScalePacificClusterControlPlaneStub        func(string, string, int32) error
 	scalePacificClusterControlPlaneMutex       sync.RWMutex
 	scalePacificClusterControlPlaneArgsForCall []struct {
@@ -5314,6 +5327,74 @@ func (fake *ClusterClient) RemoveCEIPTelemetryJobReturnsOnCall(i int, result1 er
 	}{result1}
 }
 
+func (fake *ClusterClient) RemoveMatchingLabelsFromResources(arg1 client.ObjectList, arg2 string, arg3 []string) error {
+	var arg3Copy []string
+	if arg3 != nil {
+		arg3Copy = make([]string, len(arg3))
+		copy(arg3Copy, arg3)
+	}
+	fake.removeMatchingLabelsFromResourcesMutex.Lock()
+	ret, specificReturn := fake.removeMatchingLabelsFromResourcesReturnsOnCall[len(fake.removeMatchingLabelsFromResourcesArgsForCall)]
+	fake.removeMatchingLabelsFromResourcesArgsForCall = append(fake.removeMatchingLabelsFromResourcesArgsForCall, struct {
+		arg1 client.ObjectList
+		arg2 string
+		arg3 []string
+	}{arg1, arg2, arg3Copy})
+	stub := fake.RemoveMatchingLabelsFromResourcesStub
+	fakeReturns := fake.removeMatchingLabelsFromResourcesReturns
+	fake.recordInvocation("RemoveMatchingLabelsFromResources", []interface{}{arg1, arg2, arg3Copy})
+	fake.removeMatchingLabelsFromResourcesMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *ClusterClient) RemoveMatchingLabelsFromResourcesCallCount() int {
+	fake.removeMatchingLabelsFromResourcesMutex.RLock()
+	defer fake.removeMatchingLabelsFromResourcesMutex.RUnlock()
+	return len(fake.removeMatchingLabelsFromResourcesArgsForCall)
+}
+
+func (fake *ClusterClient) RemoveMatchingLabelsFromResourcesCalls(stub func(client.ObjectList, string, []string) error) {
+	fake.removeMatchingLabelsFromResourcesMutex.Lock()
+	defer fake.removeMatchingLabelsFromResourcesMutex.Unlock()
+	fake.RemoveMatchingLabelsFromResourcesStub = stub
+}
+
+func (fake *ClusterClient) RemoveMatchingLabelsFromResourcesArgsForCall(i int) (client.ObjectList, string, []string) {
+	fake.removeMatchingLabelsFromResourcesMutex.RLock()
+	defer fake.removeMatchingLabelsFromResourcesMutex.RUnlock()
+	argsForCall := fake.removeMatchingLabelsFromResourcesArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *ClusterClient) RemoveMatchingLabelsFromResourcesReturns(result1 error) {
+	fake.removeMatchingLabelsFromResourcesMutex.Lock()
+	defer fake.removeMatchingLabelsFromResourcesMutex.Unlock()
+	fake.RemoveMatchingLabelsFromResourcesStub = nil
+	fake.removeMatchingLabelsFromResourcesReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *ClusterClient) RemoveMatchingLabelsFromResourcesReturnsOnCall(i int, result1 error) {
+	fake.removeMatchingLabelsFromResourcesMutex.Lock()
+	defer fake.removeMatchingLabelsFromResourcesMutex.Unlock()
+	fake.RemoveMatchingLabelsFromResourcesStub = nil
+	if fake.removeMatchingLabelsFromResourcesReturnsOnCall == nil {
+		fake.removeMatchingLabelsFromResourcesReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.removeMatchingLabelsFromResourcesReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *ClusterClient) ScalePacificClusterControlPlane(arg1 string, arg2 string, arg3 int32) error {
 	fake.scalePacificClusterControlPlaneMutex.Lock()
 	ret, specificReturn := fake.scalePacificClusterControlPlaneReturnsOnCall[len(fake.scalePacificClusterControlPlaneArgsForCall)]
@@ -6957,6 +7038,8 @@ func (fake *ClusterClient) Invocations() map[string][][]interface{} {
 	defer fake.patchResourceMutex.RUnlock()
 	fake.removeCEIPTelemetryJobMutex.RLock()
 	defer fake.removeCEIPTelemetryJobMutex.RUnlock()
+	fake.removeMatchingLabelsFromResourcesMutex.RLock()
+	defer fake.removeMatchingLabelsFromResourcesMutex.RUnlock()
 	fake.scalePacificClusterControlPlaneMutex.RLock()
 	defer fake.scalePacificClusterControlPlaneMutex.RUnlock()
 	fake.scalePacificClusterWorkerNodesMutex.RLock()

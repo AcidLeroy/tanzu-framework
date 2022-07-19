@@ -14,8 +14,15 @@ import (
 	"github.com/go-openapi/swag"
 	"github.com/juju/fslock"
 	"github.com/pkg/errors"
+	kerrors "k8s.io/apimachinery/pkg/util/errors"
+	capav1beta1 "sigs.k8s.io/cluster-api-provider-aws/api/v1beta1"
+	capzv1beta1 "sigs.k8s.io/cluster-api-provider-azure/api/v1beta1"
+	capvv1beta1 "sigs.k8s.io/cluster-api-provider-vsphere/apis/v1beta1"
+	capi "sigs.k8s.io/cluster-api/api/v1beta1"
+	bootstrapv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1"
 	clusterctlv1 "sigs.k8s.io/cluster-api/cmd/clusterctl/api/v1alpha3"
 	clusterctl "sigs.k8s.io/cluster-api/cmd/clusterctl/client"
+	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
 	crtclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/vmware-tanzu/tanzu-framework/pkg/v1/config"
@@ -415,6 +422,14 @@ func (c *TkgClient) PatchClusterInitOperations(regionalClusterClient clusterclie
 		return errors.Wrap(err, "unable to patch optional metadata under labels")
 	}
 
+	if config.IsFeatureActivated(config.FeatureFlagPackageBasedLCM) {
+		// Patch and remove kapp-controller labels from clusterclass resources
+		err = c.removeKappControllerLabelsFromClusterClassResources(regionalClusterClient)
+		if err != nil {
+			return errors.Wrap(err, "unable to patch optional metadata under labels")
+		}
+	}
+
 	return err
 }
 
@@ -767,4 +782,34 @@ func (c *TkgClient) safelyAddFeatureFlag(featureFlags map[string]string, feature
 		featureFlags = map[string]string{feature: value}
 	}
 	return featureFlags
+}
+
+// removeKappControllerLabelsFromClusterClassResources removes kapp-controller labels from clusterclass resources
+func (c *TkgClient) removeKappControllerLabelsFromClusterClassResources(regionalClusterClient clusterclient.Client) error {
+	errList := []error{}
+	labelsToBeDeleted := []string{"kapp.k14s.io/app", "kapp.k14s.io/association"}
+	resourceListTypes := []crtclient.ObjectList{
+		&capi.ClusterClassList{},
+		&controlplanev1.KubeadmControlPlaneTemplateList{},
+		&bootstrapv1.KubeadmConfigTemplateList{},
+		&capav1beta1.AWSClusterTemplateList{},
+		&capav1beta1.AWSMachineTemplateList{},
+		&capzv1beta1.AzureClusterTemplateList{},
+		&capzv1beta1.AzureMachineTemplateList{},
+		&capvv1beta1.VSphereClusterTemplateList{},
+		&capvv1beta1.VSphereMachineTemplateList{},
+	}
+
+	labelRemover := func(resource crtclient.ObjectList) error {
+		if exists, err := regionalClusterClient.VerifyExistenceOfCRD(resource.GetObjectKind().GroupVersionKind().Kind, resource.GetObjectKind().GroupVersionKind().Group); err != nil || !exists {
+			return nil
+		}
+		return regionalClusterClient.RemoveMatchingLabelsFromResources(resource, constants.TkgNamespace, labelsToBeDeleted)
+	}
+
+	for i := range resourceListTypes {
+		errList = append(errList, labelRemover(resourceListTypes[i]))
+	}
+
+	return kerrors.NewAggregate(errList)
 }
